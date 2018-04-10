@@ -27,15 +27,44 @@ public class ClientWithSecurity{
 
             // Connect to server and get the input and output streams
             clientSocket = new Socket("localhost", 4321);
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(),true);
 			toServer = new DataOutputStream(clientSocket.getOutputStream());
             fromServer = new DataInputStream(clientSocket.getInputStream());
+            System.out.println("Establishing Handshake, Sending Request");
+            toServer.writeInt(3);
+            toServer.flush();
             
-            System.out.println("Establishing Handshake, Sending Greeting");
-            out.println("Hello SecStore, please prove your identity!");
-            out.flush();
+            while(!clientSocket.isClosed()){
+                int messageCode = fromServer.readInt();
 
-            PublicKey pKey = getCAPKey("CA.crt");
+                //Transfer filename
+                if (messageCode == 0){
+
+                //transfer file
+                } else if (messageCode == 1){
+
+                //close connection
+                }else if (messageCode == 2){
+                    // System.out.println("Closing connection...");
+
+					// if (bufferedFileOutputStream != null) bufferedFileOutputStream.close();
+					// if (bufferedFileOutputStream != null) fileOutputStream.close();
+					// fromClient.close();
+					// toClient.close();
+                    // connectionSocket.close();
+                //handshake message
+                }else if (messageCode == 3){
+                    int messageLen = fromServer.readInt();
+                    System.out.println("Recieved Message Length: " + messageLen);
+                    byte[] message = new byte[messageLen];
+                    fromServer.readFully(message, 0, messageLen);
+                    //PublicKey pKey = getCAPKey("CA.crt");
+                }
+                
+                
+            }
+            
+
+            
 
 
 
