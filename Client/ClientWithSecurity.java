@@ -32,42 +32,38 @@ public class ClientWithSecurity{
             System.out.println("Establishing Handshake, Sending Request");
             toServer.writeInt(3);
             toServer.flush();
-            
-            while(!clientSocket.isClosed()){
-                int messageCode = fromServer.readInt();
-
-                //Transfer filename
-                if (messageCode == 0){
-
-                //transfer file
-                } else if (messageCode == 1){
-
-                //close connection
-                }else if (messageCode == 2){
-                    // System.out.println("Closing connection...");
-
-					// if (bufferedFileOutputStream != null) bufferedFileOutputStream.close();
-					// if (bufferedFileOutputStream != null) fileOutputStream.close();
-					// fromClient.close();
-					// toClient.close();
-                    // connectionSocket.close();
-                //handshake message
-                }else if (messageCode == 3){
-                    int messageLen = fromServer.readInt();
-                    System.out.println("Recieved Message Length: " + messageLen);
-                    byte[] message = new byte[messageLen];
-                    fromServer.readFully(message, 0, messageLen);
-                    //PublicKey pKey = getCAPKey("CA.crt");
+            int messageCode = -1;
+            while(messageCode != 3){
+                messageCode = fromServer.readInt();
+                if (messageCode == 2){
+                    toServer.close();
+                    fromServer.close();
+                    clientSocket.close();
                 }
-                
-                
             }
-            
+            int messageLen = fromServer.readInt();
+            System.out.println("Recieved Message Length: " + messageLen);
+            byte[] message = new byte[messageLen];
+            fromServer.readFully(message, 0, messageLen);
 
-            
+            System.out.println("Requesting for certificate");
+            toServer.writeInt(4);
+            toServer.flush();
 
+            while(messageCode != 4){
+                messageCode = fromServer.readInt();
+                if (messageCode == 2){
+                    toServer.close();
+                    fromServer.close();
+                    clientSocket.close();
+                }
+            }
 
+            int certLen = fromServer.readInt();
+            byte[] serverCertInBytes = new byte[certLen];
+            fromServer.readFully(serverCertInBytes, 0, certLen);
 
+            //PublicKey pKey = getCAPKey("CA.crt");
 
         }catch (Exception ex){
             ex.printStackTrace();

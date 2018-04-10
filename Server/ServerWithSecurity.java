@@ -40,10 +40,14 @@ public class ServerWithSecurity{
 
                 //Close connection
                 }else if (messageCode == 2){
-                    // fromClient.close();
-                    // toClient.close();
-                    // connectionSocket.close();
-                //Handshake
+                    System.out.println("Closing connection...");
+
+					if (bufferedFileOutputStream != null) bufferedFileOutputStream.close();
+					if (bufferedFileOutputStream != null) fileOutputStream.close();
+                    fromClient.close();
+                    toClient.close();
+                    connectionSocket.close();
+                //Request for Handshake
                 }else if (messageCode == 3){
                     System.out.println("Request for handshake");
                     byte[] signMessage = generateSignedMessage(serverDer, hsMessage);
@@ -52,6 +56,16 @@ public class ServerWithSecurity{
                     System.out.println("Signed Message Length: " + signMessage.length);
                     toClient.write(signMessage);
                     toClient.flush();
+                //Request for cert
+                }else if (messageCode == 4){
+                    System.out.println("Request for certificate");
+                    toClient.writeInt(4);
+                    File serverCertFile = new File(serverCert);
+                    int certLen = serverCertFile.length;
+                    toClient.writeInt(certLen);
+                    byte[] certInBytes = Files.readAllBytes(serverCertFile.toPath());
+                    toClient.write(certInBytes);
+
                 }
             }
         }catch (Exception ex){
