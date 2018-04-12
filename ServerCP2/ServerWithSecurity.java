@@ -6,6 +6,8 @@ import java.security.*;
 import java.security.cert.*;
 import java.security.spec.*;
 import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.io.FileUtils;
 
 public class ServerWithSecurity {
     private static final String serverCert = "server.crt";
@@ -20,6 +22,7 @@ public class ServerWithSecurity {
         FileOutputStream fileOutputStream = null;
         BufferedOutputStream bufferedFileOutputStream = null;
         String hsMessage = "Hello this is SecStore";
+        String fileLocation = "";
 
         try {
             System.out.println("Initialising...");
@@ -29,6 +32,8 @@ public class ServerWithSecurity {
             System.out.println("Connected");
             fromClient = new DataInputStream(connectionSocket.getInputStream());
             toClient = new DataOutputStream(connectionSocket.getOutputStream());
+            byte[] keyInBytes = null;
+            byte[] iv = null;
 
             while (!connectionSocket.isClosed()) {
                 int messageCode = fromClient.readInt();
@@ -39,13 +44,17 @@ public class ServerWithSecurity {
 
                     int numBytes = fromClient.readInt();
                     byte[] filename = new byte[numBytes];
-                    fromClient.read(filename);
-
-                    fileOutputStream = new FileOutputStream("recv/" + new String(filename, 0, numBytes));
-                    bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
+                    fromClient.readFully(filename, 0, numBytes);
+                    fileLocation = "recv/" + new String(filename, 0, numBytes);
 
                     //Transfer file
                 } else if (messageCode == 1) {
+                    int numBytes = fromClient.readInt();
+                    byte [] block = new byte[numBytes];
+                    fromClient.readFully(block, 0, numBytes);
+                    
+                    byte[] decryptedFile = decryptFile(serverDer, block, keyInBytes);
+                    FileUtils.writeByteArrayToFile(new File(fileLocation), decryptedFile);
 
                     //Close connection
                 } else if (messageCode == 2) {
@@ -77,6 +86,19 @@ public class ServerWithSecurity {
                     toClient.write(certInBytes);
                     toClient.flush();
 
+                // receive encrypted key
+                }else if(messageCode == 5){
+                    System.out.println("Receiving Encrypted Key");
+                    int keyLen = fromClient.readInt();
+                    keyInBytes = new byte[keyLen];
+                    fromClient.readFully(keyInBytes, 0, keyLen);
+
+                // receive IV
+                }else if(messageCode == 6){
+                    System.out.println("Receiving IV");
+                    int ivLen = fromClient.readInt();
+                    iv = new byte[ivLen];
+                    fromClient.readFully(iv, 0, ivLen);
                 }
             }
         } catch (Exception ex) {
@@ -98,6 +120,24 @@ public class ServerWithSecurity {
         File privateKey = new File(keyPath);
         KeySpec ks = new PKCS8EncodedKeySpec(Files.readAllBytes(privateKey.toPath()));
         return kFactory.generatePrivate(ks);
+    }
+
+    private static byte[] decryptFile(String privateKeyPath, byte[] encryptedfile, byte[] encryptedKey){
+        try{
+            PrivateKey privateKey = loadPrivateKey(privateKeyPath);
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            byte[] decryptedKey = cipher.doFinal(encryptedKey);
+            SecretKeySpec skey = new SecretKeySpec(decryptedKey, "AES");
+
+            Cipher dCipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            dCipher.init(Cipher.DECRYPT_MODE, skey);
+            return dCipher.doFinal(encryptedfile);
+        }catch(Exception ex){
+            ex.printStackTrace();
+        }
+        return null;
+
     }
 
 }

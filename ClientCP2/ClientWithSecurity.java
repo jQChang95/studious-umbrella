@@ -6,6 +6,8 @@ import java.security.cert.*;
 import java.security.spec.*;
 import java.nio.file.Paths;
 import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Scanner;
 
 import java.io.*;
 
@@ -13,8 +15,21 @@ public class ClientWithSecurity {
     private static final String caCert = "CA.crt";
 
     public static void main(String[] args) {
-        String filename = "rr.txt";
-        String encryptedName = "err.txt";
+        String filename = "Week4Psych.pdf";
+        String encryptedName = "encoded" + filename;
+        Scanner sc = new Scanner(System.in);
+        boolean flag = true;
+        while(flag){
+            System.out.println("Enter file to be send to server (include ext): ");
+            filename = sc.next();
+            try{
+                File file = new File(filename);
+                flag = false;
+            }catch(Exception ex){
+                System.out.println("Invalid file name");
+            }
+        }
+        
 
         int numBytes = 0;
 
@@ -25,6 +40,8 @@ public class ClientWithSecurity {
 
         FileInputStream fileInputStream = null;
         BufferedInputStream bufferedInputStream = null;
+
+        SecureRandom srandom = new SecureRandom();
 
         long timeStarted = System.nanoTime();
 
@@ -53,6 +70,7 @@ public class ClientWithSecurity {
             System.out.println("Requesting for certificate");
             toServer.writeInt(4);
             toServer.flush();
+
             //wait for reply
             while (messageCode != 4) {
                 messageCode = fromServer.readInt();
@@ -96,39 +114,37 @@ public class ClientWithSecurity {
                 clientSocket.close();
             }
 
-            //encrypt file
+            //encrypt file with AES key
             File file = new File(filename);
             byte[] unencryptedFile = Files.readAllBytes(file.toPath());
-
-            SecretKey symKey = generateSymmetricKey();
+            SecretKey symKey = generateAESKey();            
             byte[] encryptedFile = encryptFile(unencryptedFile, symKey);
-            Files.write(Paths.get(encryptedName), encryptedFile);
 
-            fileInputStream = new FileInputStream(encryptedName);
-            bufferedInputStream = new BufferedInputStream(fileInputStream);
+            //encrypt key using public key
+            byte[] encryptedKey = encryptKey(symKey, serverPublicKey);
+            toServer.writeInt(5);
+            toServer.writeInt(encryptedKey.length);
+            toServer.write(encryptedKey);
+            toServer.flush();
 
-            byte[] fromFileBuffer = new byte[117];
-            
             // Send the filename
 			toServer.writeInt(0);
-			toServer.writeInt(encryptedName.getBytes().length);
-			toServer.write(encryptedName.getBytes());
+			toServer.writeInt(filename.getBytes().length);
+			toServer.write(filename.getBytes());
             toServer.flush();
-            
 
             // Send the file
-	        for (boolean fileEnded = false; !fileEnded;) {
-				numBytes = bufferedInputStream.read(fromFileBuffer);
-				fileEnded = numBytes < fromFileBuffer.length;
-
-				toServer.writeInt(1);
-				toServer.writeInt(numBytes);
-				toServer.write(fromFileBuffer,0,numBytes);
-				toServer.flush();
-			}
-
-	        bufferedInputStream.close();
-	        fileInputStream.close();
+            toServer.writeInt(1);
+			toServer.writeInt(encryptedFile.length);
+			toServer.write(encryptedFile);
+            toServer.flush();
+            
+            System.out.println("Transfer completed");
+            toServer.writeInt(2);
+            toServer.close();
+            fromServer.close();
+            clientSocket.close();
+            
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -151,18 +167,30 @@ public class ClientWithSecurity {
         return output;
     }
 
-    public static byte[] encryptFile(byte[] fileInBytes, Key key) {
+    public static byte[] encryptFile(byte[] fileInBytes, SecretKey key) {
         byte[] encryptedFile = null;
+        
         try {
-            Cipher cipher = Cipher.getInstance("RSA");
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, key);
             encryptedFile = cipher.doFinal(fileInBytes);
         } catch (Exception ex) {
             System.out.println("Error in encrypting");
             ex.printStackTrace();
         }
-
         return encryptedFile;
+    }
+
+    public static byte[] encryptKey(SecretKey sKey, PublicKey pKey){
+        byte[] encryptedKey = null;
+        try{
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, pKey);
+            encryptedKey = cipher.doFinal(sKey.getEncoded());
+        }catch(Exception ex){
+            ex.printStackTrace();
+        }
+        return encryptedKey;
     }
 
     public static SecretKey generateAESKey() throws Exception {
@@ -170,5 +198,6 @@ public class ClientWithSecurity {
         generator.init(128);
 		SecretKey key = generator.generateKey();
 		return key;
-	}
+    }
+    
 }

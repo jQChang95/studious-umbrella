@@ -17,18 +17,41 @@ $ cd studious-umbrella
 
 ### Usage
 
-Run on 2 seperate machine/terminals
+Ensure that you run on server and client on 2 seperate machine/terminals
+
+#### CP1
 
 One runs
 ```
+$ cd ServerCP1
 $ javac *.java
 $ java ServerWithSecurity
 ```
-After running the above, run on the other side
+Another runs
 ```
+$ cd ClientCP1
 $ javac *.java
 $ java ClientWithSecurity
 ```
+
+#### CP2
+
+Drop the file that you want to transfer into the directory ClientCP2
+
+One runs
+```
+$ cd ServerCP2
+$ javac *.java
+$ java ServerWithSecurity
+```
+Another runs
+```
+$ cd ClientCP2
+$ javac *.java
+$ java ClientWithSecurity
+```
+
+The client side will prompt you which file you want to transfer. Enter the filename *with extension.*
 
 
 ## Built With
