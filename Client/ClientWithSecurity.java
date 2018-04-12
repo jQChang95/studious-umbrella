@@ -1,8 +1,12 @@
 
 import java.net.*;
+import java.nio.file.Files;
 import java.security.*;
 import java.security.cert.*;
 import java.security.spec.*;
+import java.nio.file.Paths;
+import javax.crypto.*;
+
 import java.io.*;
 
 public class ClientWithSecurity {
@@ -10,6 +14,7 @@ public class ClientWithSecurity {
 
     public static void main(String[] args) {
         String filename = "rr.txt";
+        String encryptedName = "err.txt";
 
         int numBytes = 0;
 
@@ -30,7 +35,7 @@ public class ClientWithSecurity {
             clientSocket = new Socket("localhost", 4321);
             toServer = new DataOutputStream(clientSocket.getOutputStream());
             fromServer = new DataInputStream(clientSocket.getInputStream());
-            System.out.println("Establishing Handshake, Sending Request");
+            System.out.println("Establishing contact, Sending Request");
 
             //Sending greetings and waiting for signed reply
             toServer.writeInt(3);
@@ -64,8 +69,9 @@ public class ClientWithSecurity {
             InputStream fis = new FileInputStream(caCert);
             X509Certificate caCertificate = (X509Certificate) cf.generateCertificate(fis);
             PublicKey caKey = caCertificate.getPublicKey();
+            X509Certificate serverCert = null;
             try {
-                X509Certificate serverCert = (X509Certificate) cf.generateCertificate(input);
+                serverCert = (X509Certificate) cf.generateCertificate(input);
                 System.out.println("Checking validity");
                 serverCert.checkValidity();
                 serverCert.verify(caKey);
@@ -78,6 +84,52 @@ public class ClientWithSecurity {
             }
             System.out.println("Certificate verified");
 
+            //decrypt message send by server and checking if it matches the agreed message
+            System.out.println("Checking Message");
+            PublicKey serverPublicKey = serverCert.getPublicKey();
+            String hsMessage = decryptMessage(message, serverPublicKey);
+            if (!hsMessage.equals("Hello this is SecStore")) {
+                System.out.println("Message does not match, closing connection");
+                toServer.writeInt(2);
+                toServer.close();
+                fromServer.close();
+                clientSocket.close();
+            }
+
+            //encrypt file
+            File file = new File(filename);
+            byte[] unencryptedFile = Files.readAllBytes(file.toPath());
+
+            //TODO: FIX THIS. I CANT GET THE 117 KEY THING DONE. basically. need to generate a symmetric key, encrypt with that key, encrypt that key with rsa, and send both
+            // Key symKey = generateSymmetricKey();
+            // byte[] encryptedFile = encryptFile(unencryptedFile, symKey);
+            // Files.write(Paths.get(encryptedName), encryptedFile);
+
+            fileInputStream = new FileInputStream(encryptedName);
+            bufferedInputStream = new BufferedInputStream(fileInputStream);
+
+            byte[] fromFileBuffer = new byte[117];
+            
+            // Send the filename
+			toServer.writeInt(0);
+			toServer.writeInt(encryptedName.getBytes().length);
+			toServer.write(encryptedName.getBytes());
+            toServer.flush();
+            
+
+            // Send the file
+	        for (boolean fileEnded = false; !fileEnded;) {
+				numBytes = bufferedInputStream.read(fromFileBuffer);
+				fileEnded = numBytes < fromFileBuffer.length;
+
+				toServer.writeInt(1);
+				toServer.writeInt(numBytes);
+				toServer.write(fromFileBuffer,0,numBytes);
+				toServer.flush();
+			}
+
+	        bufferedInputStream.close();
+	        fileInputStream.close();
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -86,4 +138,38 @@ public class ClientWithSecurity {
         System.out.println("Program took: " + timeTaken / 1000000.0 + "ms to run");
     }
 
+    public static String decryptMessage(byte[] encrypted, PublicKey key) {
+        String output = null;
+        try {
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            byte[] decrypted = cipher.doFinal(encrypted);
+
+            output = new String(decrypted);
+        } catch (Exception ex) {
+            System.out.println("Error in decrypting");
+        }
+        return output;
+    }
+
+    public static byte[] encryptFile(byte[] fileInBytes, Key key) {
+        byte[] encryptedFile = null;
+        try {
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            encryptedFile = cipher.doFinal(fileInBytes);
+        } catch (Exception ex) {
+            System.out.println("Error in encrypting");
+            ex.printStackTrace();
+        }
+
+        return encryptedFile;
+    }
+
+    public static PublicKey generateSymmetricKey() throws Exception {
+        KeyGenerator generator = KeyGenerator.getInstance( "RSA" );
+        generator.init(128);
+		Key key = generator.generateKeyPair();
+		return key;
+	}
 }
