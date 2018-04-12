@@ -1,4 +1,20 @@
 
+/*
+CP1: Client wants server's public key and make sure its the right one
+Gets server cert
+Apply CA public key to server cert, get server public key
+Use server public key to encrypt message of max block length 117
+Server use private key to decrypt
+
+Cp2:
+Client generate random symmetric private key Ks
+Encrypt message with Ks
+Encrypt Ks with server public key
+send both encrypted message and encrypted symmetric key to server
+Server use private key to decrypt and get Ks
+Server use Ks to decrypt message
+
+ */
 import java.net.*;
 import java.nio.file.Files;
 import java.security.*;
@@ -14,7 +30,7 @@ public class ClientWithSecurity {
 
     public static void main(String[] args) {
         String filename = "rr.txt";
-        String encryptedName = "err.txt";
+        //String encryptedName = "err.txt";
 
         int numBytes = 0;
 
@@ -96,39 +112,62 @@ public class ClientWithSecurity {
                 clientSocket.close();
             }
 
-            //encrypt file
-            File file = new File(filename);
-            byte[] unencryptedFile = Files.readAllBytes(file.toPath());
+            //open the file
+            //File file = new File(filename);
+            //byte[] unencryptedFile = Files.readAllBytes(file.toPath());
 
-            SecretKey symKey = generateSymmetricKey();
-            byte[] encryptedFile = encryptFile(unencryptedFile, symKey);
-            Files.write(Paths.get(encryptedName), encryptedFile);
+            //SecretKey symKey = generateSymmetricKey();
+            //Encrypt file with server public key
+            //byte[] encryptedFile = encryptFile(unencryptedFile, serverPublicKey);
+            //Files.write(Paths.get(encryptedName), encryptedFile);
 
-            fileInputStream = new FileInputStream(encryptedName);
-            bufferedInputStream = new BufferedInputStream(fileInputStream);
+            //fileInputStream = new FileInputStream(encryptedName);
+            fileInputStream = new FileInputStream(filename);
+            BufferedInputStream bufferedFileInputStream = new BufferedInputStream(fileInputStream);
+            //bufferedInputStream = new BufferedInputStream(fileInputStream);
 
             byte[] fromFileBuffer = new byte[117];
-            
+            /*
             // Send the filename
-			toServer.writeInt(0);
-			toServer.writeInt(encryptedName.getBytes().length);
-			toServer.write(encryptedName.getBytes());
+            toServer.writeInt(0);
+            toServer.writeInt(encryptedName.getBytes().length);
+            toServer.write(encryptedName.getBytes());
             toServer.flush();
-            
+            */
+
+            // Send the filename
+            System.out.println("Sending file name");
+            toServer.writeInt(0);
+            //toServer.writeInt(filename.getBytes().length);
+            toServer.writeInt(encryptFile(filename.getBytes(), serverPublicKey).length);
+            toServer.write(encryptFile(filename.getBytes(), serverPublicKey));
+            toServer.flush();
+
+            /*
+            // Send the file
+            System.out.println("Sending File");
+            for (boolean fileEnded = false; !fileEnded;) {
+                numBytes = bufferedFileInputStream.read(fromFileBuffer);
+                fileEnded = numBytes < fromFileBuffer.length;
+                toServer.writeInt(1);
+                toServer.writeInt(numBytes);
+                //toServer.write(encryptFile(fromFileBuffer, serverPublicKey));
+                toServer.write(fromFileBuffer);
+                toServer.flush();
+            }*/
 
             // Send the file
-	        for (boolean fileEnded = false; !fileEnded;) {
-				numBytes = bufferedInputStream.read(fromFileBuffer);
-				fileEnded = numBytes < fromFileBuffer.length;
+            System.out.println("Sending file");
+            File sendFile = new File(filename);
+            byte[] sendFileInBytes = Files.readAllBytes(sendFile.toPath());
+            toServer.writeInt(1);
+            toServer.writeInt(sendFileInBytes.length);
+            toServer.write(sendFileInBytes);
+            toServer.flush();
 
-				toServer.writeInt(1);
-				toServer.writeInt(numBytes);
-				toServer.write(fromFileBuffer,0,numBytes);
-				toServer.flush();
-			}
 
-	        bufferedInputStream.close();
-	        fileInputStream.close();
+            //bufferedInputStream.close();
+            fileInputStream.close();
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -151,7 +190,7 @@ public class ClientWithSecurity {
         return output;
     }
 
-    public static byte[] encryptFile(byte[] fileInBytes, Key key) {
+    public static byte[] encryptFile(byte[] fileInBytes, PublicKey key) {
         byte[] encryptedFile = null;
         try {
             Cipher cipher = Cipher.getInstance("RSA");
@@ -168,7 +207,7 @@ public class ClientWithSecurity {
     public static SecretKey generateAESKey() throws Exception {
         KeyGenerator generator = KeyGenerator.getInstance( "AES" );
         generator.init(128);
-		SecretKey key = generator.generateKey();
-		return key;
-	}
+        SecretKey key = generator.generateKey();
+        return key;
+    }
 }

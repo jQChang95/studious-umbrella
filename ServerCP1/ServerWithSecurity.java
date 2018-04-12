@@ -1,3 +1,5 @@
+
+
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -39,13 +41,25 @@ public class ServerWithSecurity {
 
                     int numBytes = fromClient.readInt();
                     byte[] filename = new byte[numBytes];
-                    fromClient.read(filename);
+                    fromClient.readFully(filename, 0,numBytes);
+                    //System.out.println("File length received is: " + filename.length);
+                    String newFileName = new String(decryptMessage(filename,loadPrivateKey(serverDer)));
+                    System.out.println("Decrypted file name: " + newFileName);
 
-                    fileOutputStream = new FileOutputStream("recv/" + new String(filename, 0, numBytes));
+                    //fileOutputStream = new FileOutputStream(new String(filename, 0, numBytes));
+                    fileOutputStream = new FileOutputStream(newFileName);
                     bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
 
                     //Transfer file
                 } else if (messageCode == 1) {
+                    int numBytes = fromClient.readInt();
+                    byte [] block = new byte[numBytes];
+
+                    fromClient.readFully(block, 0, numBytes);
+                    //String decrypt = new String(decryptMessage(block,loadPrivateKey(serverDer)));
+                    if (numBytes > 0)
+                        bufferedFileOutputStream.write(block, 0, numBytes);
+
 
                     //Close connection
                 } else if (messageCode == 2) {
@@ -98,6 +112,20 @@ public class ServerWithSecurity {
         File privateKey = new File(keyPath);
         KeySpec ks = new PKCS8EncodedKeySpec(Files.readAllBytes(privateKey.toPath()));
         return kFactory.generatePrivate(ks);
+    }
+
+    public static String decryptMessage(byte[] encrypted, PrivateKey key) {
+        String output = null;
+        try {
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            byte[] decrypted = cipher.doFinal(encrypted);
+
+            output = new String(decrypted);
+        } catch (Exception ex) {
+            System.out.println("Error in decrypting");
+        }
+        return output;
     }
 
 }
