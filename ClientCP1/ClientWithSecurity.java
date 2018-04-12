@@ -100,10 +100,9 @@ public class ClientWithSecurity {
             File file = new File(filename);
             byte[] unencryptedFile = Files.readAllBytes(file.toPath());
 
-            //TODO: FIX THIS. I CANT GET THE 117 KEY THING DONE. basically. need to generate a symmetric key, encrypt with that key, encrypt that key with rsa, and send both
-            // Key symKey = generateSymmetricKey();
-            // byte[] encryptedFile = encryptFile(unencryptedFile, symKey);
-            // Files.write(Paths.get(encryptedName), encryptedFile);
+            SecretKey symKey = generateSymmetricKey();
+            byte[] encryptedFile = encryptFile(unencryptedFile, symKey);
+            Files.write(Paths.get(encryptedName), encryptedFile);
 
             fileInputStream = new FileInputStream(encryptedName);
             bufferedInputStream = new BufferedInputStream(fileInputStream);
@@ -166,10 +165,10 @@ public class ClientWithSecurity {
         return encryptedFile;
     }
 
-    public static PublicKey generateSymmetricKey() throws Exception {
-        KeyGenerator generator = KeyGenerator.getInstance( "RSA" );
+    public static SecretKey generateAESKey() throws Exception {
+        KeyGenerator generator = KeyGenerator.getInstance( "AES" );
         generator.init(128);
-		Key key = generator.generateKeyPair();
+		SecretKey key = generator.generateKey();
 		return key;
 	}
 }
