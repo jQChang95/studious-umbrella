@@ -8,7 +8,7 @@ import java.security.spec.*;
 import javax.crypto.*;
 
 public class ServerWithSecurity{
-    private static final String serverCert = "server.csr";
+    private static final String serverCert = "server.crt";
     private static final String serverDer = "privateServer.der";
     public static void main(String[] args){
         ServerSocket welcomeSocket = null;
@@ -61,10 +61,12 @@ public class ServerWithSecurity{
                     System.out.println("Request for certificate");
                     toClient.writeInt(4);
                     File serverCertFile = new File(serverCert);
-                    int certLen = serverCertFile.length;
-                    toClient.writeInt(certLen);
                     byte[] certInBytes = Files.readAllBytes(serverCertFile.toPath());
+                    int certLen = certInBytes.length;
+                    toClient.writeInt(certLen);
+                    System.out.println("Certicated length: " + certLen);
                     toClient.write(certInBytes);
+                    toClient.flush();
 
                 }
             }
