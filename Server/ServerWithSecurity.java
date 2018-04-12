@@ -53,7 +53,6 @@ public class ServerWithSecurity{
                     byte[] signMessage = generateSignedMessage(serverDer, hsMessage);
                     toClient.writeInt(3);
                     toClient.writeInt(signMessage.length);
-                    System.out.println("Signed Message Length: " + signMessage.length);
                     toClient.write(signMessage);
                     toClient.flush();
                 //Request for cert
@@ -64,7 +63,6 @@ public class ServerWithSecurity{
                     byte[] certInBytes = Files.readAllBytes(serverCertFile.toPath());
                     int certLen = certInBytes.length;
                     toClient.writeInt(certLen);
-                    System.out.println("Certicated length: " + certLen);
                     toClient.write(certInBytes);
                     toClient.flush();
 

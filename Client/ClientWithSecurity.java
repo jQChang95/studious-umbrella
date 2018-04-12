@@ -6,6 +6,7 @@ import java.security.spec.*;
 import java.io.*;
 
 public class ClientWithSecurity {
+    private static final String caCert = "CA.crt";
 
     public static void main(String[] args) {
         String filename = "rr.txt";
@@ -30,38 +31,44 @@ public class ClientWithSecurity {
             toServer = new DataOutputStream(clientSocket.getOutputStream());
             fromServer = new DataInputStream(clientSocket.getInputStream());
             System.out.println("Establishing Handshake, Sending Request");
+
+            //Sending greetings and waiting for signed reply
             toServer.writeInt(3);
             toServer.flush();
             int messageCode = -1;
+            //wait for reply
             while (messageCode != 3) {
                 messageCode = fromServer.readInt();
             }
             int messageLen = fromServer.readInt();
-            System.out.println("Recieved Message Length: " + messageLen);
             byte[] message = new byte[messageLen];
             fromServer.readFully(message, 0, messageLen);
 
+            //Request for Cert sign by CA
             System.out.println("Requesting for certificate");
             toServer.writeInt(4);
             toServer.flush();
-
+            //wait for reply
             while (messageCode != 4) {
                 messageCode = fromServer.readInt();
             }
-
             int certLen = fromServer.readInt();
             byte[] serverCertInBytes = new byte[certLen];
             fromServer.readFully(serverCertInBytes, 0, certLen);
+            //certificate received in bytes
             System.out.println("Certificate received");
+
+            //generating X509Certs from CA's cert and Server's cert, then verify them
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             InputStream input = new ByteArrayInputStream(serverCertInBytes);
-            PublicKey publicKey;
+            InputStream fis = new FileInputStream(caCert);
+            X509Certificate caCertificate = (X509Certificate) cf.generateCertificate(fis);
+            PublicKey caKey = caCertificate.getPublicKey();
             try {
                 X509Certificate serverCert = (X509Certificate) cf.generateCertificate(input);
-                System.out.println(serverCert);
                 System.out.println("Checking validity");
                 serverCert.checkValidity();
-                publicKey = serverCert.getPublicKey();
+                serverCert.verify(caKey);
             } catch (Exception ex) {
                 System.out.println("Certificate not yet valid/expire");
                 toServer.writeInt(2);
@@ -69,8 +76,8 @@ public class ClientWithSecurity {
                 fromServer.close();
                 clientSocket.close();
             }
+            System.out.println("Certificate verified");
 
-            //PublicKey pKey = getCAPKey("CA.crt");
 
         } catch (Exception ex) {
             ex.printStackTrace();
