@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.security.*;
 import java.security.cert.*;
 import java.security.spec.*;
+import java.util.Arrays;
 import javax.crypto.*;
 
 public class ServerWithSecurity {
@@ -37,29 +38,30 @@ public class ServerWithSecurity {
 
                 //Transfer file name
                 if (messageCode == 0) {
-                    System.out.println("Receiving file...");
+                    System.out.println("Receiving file name...");
 
                     int numBytes = fromClient.readInt();
                     byte[] filename = new byte[numBytes];
                     fromClient.readFully(filename, 0,numBytes);
                     //System.out.println("File length received is: " + filename.length);
                     String newFileName = new String(decryptMessage(filename,loadPrivateKey(serverDer)));
-                    System.out.println("Decrypted file name: " + newFileName);
 
                     //fileOutputStream = new FileOutputStream(new String(filename, 0, numBytes));
                     fileOutputStream = new FileOutputStream(newFileName);
                     bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
+                    System.out.println("File name received: " + newFileName);
 
                     //Transfer file
                 } else if (messageCode == 1) {
+                    //System.out.println("Receiving file content...");
                     int numBytes = fromClient.readInt();
                     byte [] block = new byte[numBytes];
+                    fromClient.read(block, 0, numBytes);
 
-                    fromClient.readFully(block, 0, numBytes);
-                    //String decrypt = new String(decryptMessage(block,loadPrivateKey(serverDer)));
+                    byte[] decrypt = decryptMessage(block,loadPrivateKey(serverDer));
+                    //System.out.println(Arrays.toString(block)); //this is the encrypted block that was sent over
                     if (numBytes > 0)
-                        bufferedFileOutputStream.write(block, 0, numBytes);
-
+                        bufferedFileOutputStream.write(decrypt);
 
                     //Close connection
                 } else if (messageCode == 2) {
@@ -69,6 +71,7 @@ public class ServerWithSecurity {
                         bufferedFileOutputStream.close();
                     if (bufferedFileOutputStream != null)
                         fileOutputStream.close();
+                    //toClient.writeUTF("Done");
                     fromClient.close();
                     toClient.close();
                     connectionSocket.close();
@@ -100,7 +103,7 @@ public class ServerWithSecurity {
 
     public static byte[] generateSignedMessage(String privateKeyPath, String message) throws Exception {
         PrivateKey privateKey = loadPrivateKey(privateKeyPath);
-        Cipher cipher = Cipher.getInstance("RSA");
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, privateKey);
         byte[] encryptedBytes = cipher.doFinal(message.getBytes());
 
@@ -114,18 +117,16 @@ public class ServerWithSecurity {
         return kFactory.generatePrivate(ks);
     }
 
-    public static String decryptMessage(byte[] encrypted, PrivateKey key) {
-        String output = null;
+    public static byte[] decryptMessage(byte[] encrypted, PrivateKey key) {
+        byte[] decrypted = null;
         try {
-            Cipher cipher = Cipher.getInstance("RSA");
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             cipher.init(Cipher.DECRYPT_MODE, key);
-            byte[] decrypted = cipher.doFinal(encrypted);
-
-            output = new String(decrypted);
+            decrypted = cipher.doFinal(encrypted);
         } catch (Exception ex) {
             System.out.println("Error in decrypting");
         }
-        return output;
+        return decrypted;
     }
 
 }
