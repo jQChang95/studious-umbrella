@@ -25,13 +25,27 @@ import javax.crypto.*;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class ClientWithSecurity {
     private static final String caCert = "CA.crt";
 
     public static void main(String[] args) {
-        String filename = "rr.txt";
+        String filename = "test.txt";
+        //String filename = "psLec6.pdf";
         //String encryptedName = "err.txt";
+        Scanner sc = new Scanner(System.in);
+        boolean flag = true;
+        while (flag){
+            System.out.println("Enter file to be sent to server (include ext): ");
+            filename = sc.next();
+            try{
+                File file = new File(filename);
+                flag = false;
+            }catch (Exception ex){
+                System.out.println("Invalid file name");
+            }
+        }
 
         int numBytes = 0;
 
