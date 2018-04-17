@@ -47,7 +47,7 @@ public class ServerWithSecurity {
                     String newFileName = new String(decryptMessage(filename,loadPrivateKey(serverDer)));
 
                     //fileOutputStream = new FileOutputStream(new String(filename, 0, numBytes));
-                    fileOutputStream = new FileOutputStream(newFileName);
+                    fileOutputStream = new FileOutputStream("recv/" + newFileName);
                     bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
                     System.out.println("File name received: " + newFileName);
 
