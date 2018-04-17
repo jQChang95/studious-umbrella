@@ -21,6 +21,8 @@ Ensure that you run on server and client on 2 seperate machine/terminals
 
 #### CP1
 
+Drop the file that you want to transfer into the directory ClientCP2
+
 One runs
 ```
 $ cd ServerCP1
@@ -33,6 +35,9 @@ $ cd ClientCP1
 $ javac *.java
 $ java ClientWithSecurity
 ```
+
+The client side will prompt you which file you want to transfer. Enter the filename *with extension.*
+The server side will receive the file in the folder /ServerCP1/recv
 
 #### CP2
 
@@ -52,6 +57,7 @@ $ java ClientWithSecurity
 ```
 
 The client side will prompt you which file you want to transfer. Enter the filename *with extension.*
+The server side will receive the file in the folder /ServerCP2/recv
 
 
 ## Built With
