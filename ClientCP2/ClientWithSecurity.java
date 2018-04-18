@@ -7,6 +7,7 @@ import java.security.spec.*;
 import java.nio.file.Paths;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
+import java.util.Random;
 import java.util.Scanner;
 
 import java.io.*;
@@ -15,7 +16,7 @@ public class ClientWithSecurity {
     private static final String caCert = "CA.crt";
 
     public static void main(String[] args) {
-        String filename = "Week4Psych.pdf";
+        String filename = "rr.txt";
         String encryptedName = "encoded" + filename;
         Scanner sc = new Scanner(System.in);
         boolean flag = true;
@@ -57,6 +58,12 @@ public class ClientWithSecurity {
             //Sending greetings and waiting for signed reply
             toServer.writeInt(3);
             toServer.flush();
+
+            Random rn = new Random();
+            String hsMessage = Integer.toString(rn.nextInt());
+            toServer.writeInt(hsMessage.getBytes().length);
+            toServer.write(hsMessage.getBytes());
+
             int messageCode = -1;
             //wait for reply
             while (messageCode != 3) {
@@ -105,8 +112,8 @@ public class ClientWithSecurity {
             //decrypt message send by server and checking if it matches the agreed message
             System.out.println("Checking Message");
             PublicKey serverPublicKey = serverCert.getPublicKey();
-            String hsMessage = decryptMessage(message, serverPublicKey);
-            if (!hsMessage.equals("Hello this is SecStore")) {
+            String newhsMessage = decryptMessage(message, serverPublicKey);
+            if (!newhsMessage.equals(hsMessage)) {
                 System.out.println("Message does not match, closing connection");
                 toServer.writeInt(2);
                 toServer.close();
@@ -128,15 +135,15 @@ public class ClientWithSecurity {
             toServer.flush();
 
             // Send the filename
-			toServer.writeInt(0);
-			toServer.writeInt(filename.getBytes().length);
-			toServer.write(filename.getBytes());
+            toServer.writeInt(0);
+            toServer.writeInt(filename.getBytes().length);
+            toServer.write(filename.getBytes());
             toServer.flush();
 
             // Send the file
             toServer.writeInt(1);
-			toServer.writeInt(encryptedFile.length);
-			toServer.write(encryptedFile);
+            toServer.writeInt(encryptedFile.length);
+            toServer.write(encryptedFile);
             toServer.flush();
             
             System.out.println("Transfer completed");
@@ -196,8 +203,8 @@ public class ClientWithSecurity {
     public static SecretKey generateAESKey() throws Exception {
         KeyGenerator generator = KeyGenerator.getInstance( "AES" );
         generator.init(128);
-		SecretKey key = generator.generateKey();
-		return key;
+        SecretKey key = generator.generateKey();
+        return key;
     }
     
 }

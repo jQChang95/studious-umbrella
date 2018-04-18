@@ -25,6 +25,7 @@ import javax.crypto.*;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.Scanner;
 
 public class ClientWithSecurity {
@@ -70,7 +71,15 @@ public class ClientWithSecurity {
 
             //Sending greetings and waiting for signed reply
             toServer.writeInt(3);
+
             toServer.flush();
+            //write random number generator
+            Random rn = new Random();
+            String hsMessage = Integer.toString(rn.nextInt());
+            toServer.writeInt(hsMessage.getBytes().length);
+            toServer.write(hsMessage.getBytes());
+            toServer.flush();
+
             int messageCode = -1;
             //wait for reply
             while (messageCode != 3) {
@@ -79,6 +88,9 @@ public class ClientWithSecurity {
             int messageLen = fromServer.readInt();
             byte[] message = new byte[messageLen];
             fromServer.readFully(message, 0, messageLen);
+
+            //Nonce
+
 
             //Request for Cert sign by CA
             System.out.println("Requesting for certificate");
@@ -118,8 +130,8 @@ public class ClientWithSecurity {
             //decrypt message send by server and checking if it matches the agreed message
             System.out.println("Checking Message");
             PublicKey serverPublicKey = serverCert.getPublicKey();
-            String hsMessage = decryptMessage(message, serverPublicKey);
-            if (!hsMessage.equals("Hello this is SecStore")) {
+            String newhsMessage = decryptMessage(message, serverPublicKey);
+            if (!newhsMessage.equals(hsMessage)) {
                 System.out.println("Message does not match, closing connection");
                 toServer.writeInt(2);
                 toServer.close();
@@ -137,6 +149,7 @@ public class ClientWithSecurity {
             //Files.write(Paths.get(encryptedName), encryptedFile);
 
             //fileInputStream = new FileInputStream(encryptedName);
+
             fileInputStream = new FileInputStream(filename);
             BufferedInputStream bufferedFileInputStream = new BufferedInputStream(fileInputStream);
             //bufferedInputStream = new BufferedInputStream(fileInputStream);
@@ -164,10 +177,12 @@ public class ClientWithSecurity {
             for (boolean fileEnded = false; !fileEnded;) {
                 numBytes = bufferedFileInputStream.read(fromFileBuffer);
                 fileEnded = numBytes < 117;
+
+                /*
                 if(numBytes<0){
                     fileEnded = false;
                     break;
-                }
+                }*/
                 if (fileEnded){
                     byte[] lastByteBlock = new byte[numBytes];
                     System.arraycopy(fromFileBuffer,0, lastByteBlock,0,numBytes);
