@@ -78,7 +78,11 @@ public class ServerWithSecurity {
                     //Request for Handshake
                 } else if (messageCode == 3) {
                     System.out.println("Request for message");
-                    byte[] signMessage = generateSignedMessage(serverDer, hsMessage);
+
+                    int numBytes = fromClient.readInt();
+                    byte[] message = new byte[numBytes];
+                    fromClient.readFully(message, 0, numBytes);
+                    byte[] signMessage = generateSignedMessage(serverDer, new String(message));
                     toClient.writeInt(3);
                     toClient.writeInt(signMessage.length);
                     toClient.write(signMessage);
