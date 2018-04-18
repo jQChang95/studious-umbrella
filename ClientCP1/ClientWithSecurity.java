@@ -164,6 +164,10 @@ public class ClientWithSecurity {
             for (boolean fileEnded = false; !fileEnded;) {
                 numBytes = bufferedFileInputStream.read(fromFileBuffer);
                 fileEnded = numBytes < 117;
+                if(numBytes<0){
+                    fileEnded = false;
+                    break;
+                }
                 if (fileEnded){
                     byte[] lastByteBlock = new byte[numBytes];
                     System.arraycopy(fromFileBuffer,0, lastByteBlock,0,numBytes);
